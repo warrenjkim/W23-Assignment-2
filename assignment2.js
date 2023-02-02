@@ -29,6 +29,33 @@ class Cube_Outline extends Shape {
         // When a set of lines is used in graphics, you should think of the list entries as
         // broken down into pairs; each pair of vertices will be drawn as a line segment.
         // Note: since the outline is rendered with Basic_shader, you need to redefine the position and color of each vertex
+
+        this.arrays.position.push(...Vector3.cast(
+            // back face
+            [-1, -1, -1], [1, -1, -1],
+            [-1, -1, -1], [-1, 1, -1],
+            [1, 1, -1], [1, -1, -1],        
+            [1, 1, -1], [-1, 1, -1],
+
+            // front face
+            [1, 1, 1], [-1, 1, 1],
+            [1, 1, 1], [1, -1, 1],
+            [-1, 1, 1], [-1, -1, 1],
+            [-1, -1, 1], [1, -1, 1],
+
+            // right face
+            [1, 1, -1], [1, 1, 1],
+            [1, -1, -1], [1, -1, 1],
+
+            // left face
+            [-1, 1, -1], [-1, 1, 1],
+            [-1, -1, -1], [-1, -1, 1],
+            ));
+
+        for(let i = 0; i < this.arrays.position.length; i++)
+            this.arrays.color.push(color(1, 1, 1, 1));
+
+        this.indices = false;
     }
 }
 
@@ -36,6 +63,7 @@ class Cube_Single_Strip extends Shape {
     constructor() {
         super("position", "normal");
         // TODO (Requirement 6)
+        
     }
 }
 
@@ -53,6 +81,7 @@ class Base_Scene extends Scene {
         this.shapes = {
             'cube': new Cube(),
             'outline': new Cube_Outline(),
+            'triangle_strip': new Cube_Single_Strip()
         };
 
         // *** Materials
@@ -89,6 +118,9 @@ export class Assignment2 extends Base_Scene {
 
         // sit still flag
         this.sit_still = false;
+
+        // outline only flag
+        this.outline_only = false;
         
         // colors
         this.colors = [];
@@ -116,6 +148,7 @@ export class Assignment2 extends Base_Scene {
         // Add a button for controlling the scene.
         this.key_triggered_button("Outline", ["o"], () => {
             // TODO:  Requirement 5b:  Set a flag here that will toggle your outline on and off
+            this.outline_only = !this.outline_only;
         });
         this.key_triggered_button("Sit still", ["m"], () => {
             // TODO:  Requirement 3d:  Set a flag here that will toggle your swaying motion on and off.
@@ -123,6 +156,9 @@ export class Assignment2 extends Base_Scene {
         });
     }
 
+    draw_outline(context, program_state, model_transform) {
+        this.shapes.outline.draw(context, program_state, model_transform, this.white, 'LINES')
+    }
     draw_box(context, program_state, model_transform, index) {
         // TODO:  Helper function for requirement 3 (see hint).
         //        This should make changes to the model_transform matrix, draw the next box, and return the newest model_transform.
@@ -141,8 +177,11 @@ export class Assignment2 extends Base_Scene {
         // t = t
         let rotate_function = ((max_angle / 2) + ((max_angle / 2) * (Math.sin(Math.PI * t))));
 
+        // if sit still is toggled on, set the rotation function to the max angle
         if(this.sit_still) 
             rotate_function = max_angle;
+
+        
 
         // do not rotate the first box
         if(index != 0) {
@@ -150,8 +189,15 @@ export class Assignment2 extends Base_Scene {
                 Mat4.translation(-1 * rotate_function, rotate_function + 2, 0)).times(
                 Mat4.rotation(rotate_function, 0, 0, 1));
         }
+
+        // if outline only is toggled on, so only draw outlines
+        if(this.outline_only)
+            //this.shapes.cube_single_strip.draw(context, program_state, model_transform, this.white, 'LINES');
+            this.draw_outline(context, program_state, model_transform);
+        // outline only is toggled off, so draw cubes
+        else
+            this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: this.colors[index]}));
         
-        this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: this.colors[index]}))
 
         return model_transform;
     }

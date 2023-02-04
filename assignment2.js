@@ -31,18 +31,18 @@ class Cube_Outline extends Shape {
         // Note: since the outline is rendered with Basic_shader, you need to redefine the position and color of each vertex
 
         this.arrays.position.push(...Vector3.cast(
-            // back face
-            [-1, -1, -1], [1, -1, -1],
-            [-1, -1, -1], [-1, 1, -1],
-            [1, 1, -1], [1, -1, -1],        
-            [1, 1, -1], [-1, 1, -1],
-
             // front face
             [1, 1, 1], [-1, 1, 1],
             [1, 1, 1], [1, -1, 1],
             [-1, 1, 1], [-1, -1, 1],
             [-1, -1, 1], [1, -1, 1],
 
+            // back face
+            [-1, -1, -1], [1, -1, -1],
+            [-1, -1, -1], [-1, 1, -1],
+            [1, 1, -1], [1, -1, -1],        
+            [1, 1, -1], [-1, 1, -1],
+            
             // right face
             [1, 1, -1], [1, 1, 1],
             [1, -1, -1], [1, -1, 1],
@@ -63,7 +63,43 @@ class Cube_Single_Strip extends Shape {
     constructor() {
         super("position", "normal");
         // TODO (Requirement 6)
-        
+        this.arrays.position.push(...Vector3.cast(
+            // front, bottom, back, top face
+            // initial triangle
+            [-1, 1, 1], [1, 1, 1], [-1, -1, 1,],
+            // context: [1, 1, 1], [-1, -1, 1]
+            [1, -1, 1], 
+            // context: [-1, -1, 1], [1, -1, 1]
+            [-1, -1, -1], 
+            // context: [1, -1, 1], [-1, -1, -1]
+            [1, -1, -1],
+            // context: [-1, -1, -1,], [1, -1, -1]
+            [-1, 1, -1],
+            // context: [1, -1, -1], [-1, 1, -1]
+            [1, 1, -1],
+            // context: [1, 1, -1], [1, 1, -1]
+            [-1, 1, 1],
+            // context: [1, 1, -1], [-1, 1, 1]
+            [1, 1, 1],
+
+            // right face
+            // initial triangle
+            [1, 1 ,1], [1, 1, -1], [1, -1, 1],
+            // context: [1, 1, -1], [1, -1, 1]
+            [1, -1, -1],
+
+            // left face
+            // set point to right side
+            [1, -1, -1], [-1, -1, -1], [-1, -1, 1],
+            // context: [-1, -1, -1], [-1, -1, 1]
+            [-1, 1, -1],
+            // context: [-1, -1, 1], [-1, 1, 1]
+            [-1, 1, 1]
+        ));
+
+        this.arrays.normal = this.arrays.position;
+
+        this.indices = false;  
     }
 }
 
@@ -156,49 +192,69 @@ export class Assignment2 extends Base_Scene {
         });
     }
 
+    draw_cube(context, program_state, model_transform, index) {
+        this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: this.colors[index]}));
+    }
+
     draw_outline(context, program_state, model_transform) {
         this.shapes.outline.draw(context, program_state, model_transform, this.white, 'LINES')
     }
+
+    draw_triangle_strip(context, program_state, model_transform, index) {
+        this.shapes.triangle_strip.draw(context, program_state, model_transform, this.materials.plastic.override({color: this.colors[index]}), 'TRIANGLE_STRIP');
+    }
+
     draw_box(context, program_state, model_transform, index) {
         // TODO:  Helper function for requirement 3 (see hint).
         //        This should make changes to the model_transform matrix, draw the next box, and return the newest model_transform.
         // Hint:  You can add more parameters for this function, like the desired color, index of the box, etc.
 
         // time
-        const t = this.t = program_state.animation_time / 1000;
+        const t = program_state.animation_time / 1000;
 
         // max angle that the boxes can rotate
         const max_angle = 0.05 * Math.PI;
 
         // f(t) = a + b * sin(w * t) where 
         // a = max_angle / 2
-        // b = max_angle / 2
+        // b =pp max_angle / 2
         // w = PI
         // t = t
-        let rotate_function = ((max_angle / 2) + ((max_angle / 2) * (Math.sin(Math.PI * t))));
+        let rotate_function = (max_angle / 2) + (((max_angle / 2) * Math.sin(Math.PI * t)));
 
         // if sit still is toggled on, set the rotation function to the max angle
         if(this.sit_still) 
             rotate_function = max_angle;
 
-        
-
         // do not rotate the first box
-        if(index != 0) {
+    
+        if(index == 0)
+            model_transform = model_transform.times(Mat4.scale(1, 1.5, 1));
+        else
             model_transform = model_transform.times(
-                Mat4.translation(-1 * rotate_function, rotate_function + 2, 0)).times(
-                Mat4.rotation(rotate_function, 0, 0, 1));
+                Mat4.translation(-1, 1.5, 0)).times(
+                Mat4.rotation(rotate_function, 0, 0, 1).times(
+                Mat4.scale(1, 1.5, 1).times(
+                Mat4.translation(1, 1, 0)
+                )));
+
+        // if outline only is toggled on, only draw outlines
+        if(this.outline_only)
+            this.draw_outline(context, program_state, model_transform);
+
+        // outline only is toggled off, draw cubes
+        else {
+            // because js is 0-indexed we count the (2k)th box to be the (2k - 1)st box
+            const odd_ith_box = (index) => index % 2 == 1;
+
+            if(odd_ith_box(index))
+                this.draw_triangle_strip(context, program_state, model_transform, index);
+            else
+                this.draw_cube(context, program_state, model_transform, index);
         }
 
-        // if outline only is toggled on, so only draw outlines
-        if(this.outline_only)
-            //this.shapes.cube_single_strip.draw(context, program_state, model_transform, this.white, 'LINES');
-            this.draw_outline(context, program_state, model_transform);
-        // outline only is toggled off, so draw cubes
-        else
-            this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color: this.colors[index]}));
-        
-
+        // must scale back down to not scale exponentially
+        model_transform = model_transform.times(Mat4.scale(1, (parseFloat(2/3)), 1));
         return model_transform;
     }
 

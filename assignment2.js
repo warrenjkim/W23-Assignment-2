@@ -215,19 +215,15 @@ export class Assignment2 extends Base_Scene {
         // max angle that the boxes can rotate
         const max_angle = 0.05 * Math.PI;
 
-        // f(t) = a + b * sin(w * t) where 
+        // if sit_still is toggled off, f(t) = a + b * sin(w * t) where 
         // a = max_angle / 2
         // b =pp max_angle / 2
         // w = PI
         // t = t
-        let rotate_function = (max_angle / 2) + (((max_angle / 2) * Math.sin(Math.PI * t)));
+	// if sit_still is toggled on, f(t) = max_angle instead
+        let rotate_function = !this.sit_still ? (max_angle / 2) + (((max_angle / 2) * Math.sin(Math.PI * t))) : max_angle;
 
-        // if sit still is toggled on, set the rotation function to the max angle
-        if(this.sit_still) 
-            rotate_function = max_angle;
-
-        // do not rotate the first box
-    
+	// matrix transformations
         if(index == 0)
             model_transform = model_transform.times(Mat4.scale(1, 1.5, 1));
         else
@@ -255,6 +251,7 @@ export class Assignment2 extends Base_Scene {
 
         // must scale back down to not scale exponentially
         model_transform = model_transform.times(Mat4.scale(1, (parseFloat(2/3)), 1));
+	
         return model_transform;
     }
 
@@ -266,7 +263,8 @@ export class Assignment2 extends Base_Scene {
         // Example for drawing a cube, you can remove this line if needed
         // this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:blue}));
         // TODO:  Draw your entire scene here.  Use this.draw_box( graphics_state, model_transform ) to call your helper.
-        
+
+	// draw 8 boxes (0 indexed so box indexes = 0-7)
         for(let i = 0; i < 8; i++) {
             model_transform = this.draw_box(context, program_state, model_transform, i);
         }
